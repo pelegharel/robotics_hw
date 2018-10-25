@@ -1,0 +1,10 @@
+/home/peleg/catkin_ws/install/_setup_util.py
+/home/peleg/catkin_ws/install/env.sh
+/home/peleg/catkin_ws/install/setup.bash
+/home/peleg/catkin_ws/install/setup.sh
+/home/peleg/catkin_ws/install/setup.zsh
+/home/peleg/catkin_ws/install/.rosinstall
+/home/peleg/catkin_ws/install/lib/pkgconfig/beginner_tutorials.pc
+/home/peleg/catkin_ws/install/share/beginner_tutorials/cmake/beginner_tutorialsConfig.cmake
+/home/peleg/catkin_ws/install/share/beginner_tutorials/cmake/beginner_tutorialsConfig-version.cmake
+/home/peleg/catkin_ws/install/share/beginner_tutorials/package.xml
