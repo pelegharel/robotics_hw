@@ -3,6 +3,6 @@ prefix=/home/peleg/catkin_ws/devel
 Name: beginner_tutorials
 Description: Description of beginner_tutorials
 Version: 0.0.0
-Cflags: 
+Cflags: -I/home/peleg/catkin_ws/devel/include
 Libs: -L/home/peleg/catkin_ws/devel/lib 
-Requires: 
+Requires: message_runtime roscpp rospy std_msgs
