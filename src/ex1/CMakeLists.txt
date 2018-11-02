@@ -196,3 +196,7 @@ include_directories(
 add_executable(color src/color.cpp)
 target_link_libraries(color ${catkin_LIBRARIES})
 add_dependencies(color ex1_generate_messages_cpp)
+
+add_executable(circle src/circle.cpp)
+target_link_libraries(circle ${catkin_LIBRARIES})
+add_dependencies(circle ex1_generate_messages_cpp)
