@@ -8,7 +8,7 @@ add_compile_options(-std=c++14)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-  roscpp std_msgs genmsg cv_bridge
+  roscpp sensor_msgs std_msgs genmsg cv_bridge roslib image_transport
 )
 
 ## System dependencies are found with CMake's conventions
@@ -66,7 +66,7 @@ find_package(catkin REQUIRED COMPONENTS
 # )
 
 ## Generate added messages and services with any dependencies listed here
- generate_messages(DEPENDENCIES std_msgs)
+# generate_messages(DEPENDENCIES std_msgs)
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -100,7 +100,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES ex1
-#  CATKIN_DEPENDS cv_bridge
+  CATKIN_DEPENDS roscpp std_msgs cv_bridge roslib
 #  DEPENDS system_lib
 )
 
@@ -192,11 +192,17 @@ include_directories(
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
+find_package(OpenCV)
 
 add_executable(color src/color.cpp)
 target_link_libraries(color ${catkin_LIBRARIES})
 add_dependencies(color ex1_generate_messages_cpp)
 
 add_executable(circle src/circle.cpp)
-target_link_libraries(circle ${catkin_LIBRARIES})
+target_link_libraries(circle ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 add_dependencies(circle ex1_generate_messages_cpp)
+
+add_executable(img src/img.cpp)
+target_link_libraries(img ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
+add_dependencies(img ex1_generate_messages_cpp)
+
