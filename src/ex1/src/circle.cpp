@@ -5,36 +5,66 @@
 #include "opencv2/imgproc/imgproc.hpp"
 #include "ros/ros.h"
 #include "sensor_msgs/image_encodings.h"
-#include "std_msgs/ColorRGBA.h"
+#include "std_msgs/String.h"
+#include <string>
+#include <utility>
+
 using namespace std;
 using namespace cv;
 
 namespace {
+
+struct Circle {
+  Point2d center;
+  double radius;
+};
+
+pair<Scalar, Scalar> color2range(string name) {
+  return make_pair(Scalar(100, 240, 230), Scalar(110, 260, 245));
+}
+
+Circle detect(const Mat &image, const Scalar low, const Scalar high) {
+  Mat hsv_image;
+  cvtColor(image, hsv_image, cv::COLOR_RGB2HSV);
+
+  auto filtered = [hsv_image, low, high] {
+    Mat filtered;
+    inRange(hsv_image, low, high, filtered);
+    return filtered;
+  }();
+
+  Mat bgr_image;
+  cvtColor(image, bgr_image, cv::COLOR_RGB2BGR);
+  imshow("bgr image", hsv_image);
+  waitKey(0);
+  imshow("filtered", filtered);
+  waitKey(0);
+}
+
 class Detector {
 private:
-  boost::optional<Scalar> color;
+  boost::optional<std::string> color;
   boost::optional<Mat> image;
 
 public:
-  void detect() {
+  void refresh() {
     if (!color || !image) {
       return;
     }
-    const auto c = *color;
-    ROS_INFO("%f %f %f %f", c[0], c[1], c[2], c[3]);
-    cv::imshow("img", *image);
-    cv::waitKey(0);
+    ROS_INFO("detecting %s", color->c_str());
+    const auto range = color2range(*color);
+
+    detect(*image, range.first, range.second);
   }
 
-  void received_color(const std_msgs::ColorRGBA::ConstPtr &c) {
-    color.emplace(c->b, c->g, c->r, c->a);
-    detect();
+  void received_color(const std_msgs::String::ConstPtr &c) {
+    color.emplace(c->data);
+    refresh();
   }
 
   void received_image(const sensor_msgs::ImageConstPtr &msg) {
     auto cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::RGB8);
     image.emplace(cv_ptr->image);
-    detect();
   }
 };
 }
