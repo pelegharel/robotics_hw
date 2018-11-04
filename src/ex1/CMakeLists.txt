@@ -8,7 +8,7 @@ add_compile_options(-std=c++14)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-  roscpp sensor_msgs std_msgs genmsg cv_bridge roslib image_transport
+  roscpp sensor_msgs geometry_msgs std_msgs genmsg cv_bridge roslib image_transport
 )
 
 ## System dependencies are found with CMake's conventions
@@ -100,7 +100,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES ex1
-  CATKIN_DEPENDS roscpp std_msgs cv_bridge roslib
+  CATKIN_DEPENDS roscpp geometry_msgs std_msgs cv_bridge roslib
 #  DEPENDS system_lib
 )
 
