@@ -202,6 +202,10 @@ add_executable(circle src/circle.cpp)
 target_link_libraries(circle ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 add_dependencies(circle ex1_generate_messages_cpp)
 
+add_executable(image_writer src/image_writer.cpp)
+target_link_libraries(image_writer ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
+add_dependencies(image_writer ex1_generate_messages_cpp)
+
 add_executable(img src/img.cpp)
 target_link_libraries(img ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 add_dependencies(img ex1_generate_messages_cpp)
