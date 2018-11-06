@@ -4,11 +4,21 @@
 #include "image_transport/image_transport.h"
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
+#include "ros/package.h"
 #include "ros/ros.h"
 #include "sensor_msgs/image_encodings.h"
+#include <array>
+#include <string>
 
 using namespace cv;
 using namespace std;
+namespace {
+void mark_circle(Mat &image, array<double, 3> circle) {
+  cvtColor(image, image, cv::COLOR_RGB2BGR);
+  cv::circle(image, Point(get<0>(circle), get<1>(circle)), get<2>(circle),
+             Scalar(0, 0, 0), 5);
+}
+
 class Writer {
 private:
   boost::optional<Mat> image;
@@ -16,11 +26,11 @@ private:
 public:
   void received_circle(const geometry_msgs::Vector3ConstPtr &msg) {
     if (image) {
-      cvtColor(*image, *image, cv::COLOR_RGB2BGR);
-      circle(*image, Point(msg->x, msg->y), msg->z, Scalar(0,0,0),5);
-      imshow("circ", *image);
-      waitKey(0);  
-      ROS_INFO("got circle");
+      mark_circle(*image, {msg->x, msg->y, msg->z});
+      const auto img_path =
+          ros::package::getPath("ex1") + "/src/colors_marked.jpg";
+      imwrite(img_path, *image);
+      ROS_INFO("writen image to %s", img_path.c_str());
     }
   }
 
@@ -29,6 +39,7 @@ public:
     image.emplace(cv_ptr->image);
   }
 };
+}
 int main(int argc, char **argv) {
   ros::init(argc, argv, "image_writer");
   ros::NodeHandle n;

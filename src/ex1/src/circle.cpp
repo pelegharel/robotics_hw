@@ -18,7 +18,7 @@ namespace {
 
 struct Circle {
   Point2d center;
-  int radius;
+  double radius;
 };
 
 boost::optional<pair<Scalar, Scalar>> color2range(string name) {
@@ -61,7 +61,7 @@ Circle detect(const Mat &image, const Scalar low, const Scalar high) {
 
     minEnclosingCircle(circle_points, center, radius);
 
-    return Circle{center, (int)radius};
+    return Circle{center, radius};
   }();
 
   return res;
@@ -84,7 +84,7 @@ public:
     if (range) {
       const auto circ = detect(*image, range->first, range->second);
 
-      ROS_INFO("detected circle x:%f y:%f r:%d", circ.center.x, circ.center.y,
+      ROS_INFO("detected circle x:%f y:%f r:%f", circ.center.x, circ.center.y,
                circ.radius);
 
       geometry_msgs::Vector3 msg;
