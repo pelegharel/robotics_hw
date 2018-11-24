@@ -10,6 +10,7 @@
 #include <image_geometry/pinhole_camera_model.h>
 #include <image_transport/image_transport.h>
 #include <iostream>
+#include <math.h>
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/LaserScan.h>
 #include <stdexcept>
@@ -99,19 +100,20 @@ void rotate_clockwise(ros::Publisher &velocity, double alpha) {
 
 pair<Scalar, Scalar> stoc(string color_name) {
   if (color_name == "red") {
-    return make_pair(Scalar(0, 0, 100), Scalar(20, 20, 255));
+    return make_pair(Scalar(100, 0, 0), Scalar(255, 20, 20));
   } else if (color_name == "green") {
     return make_pair(Scalar(0, 100, 0), Scalar(20, 255, 20));
   } else if (color_name == "blue") {
-    return make_pair(Scalar(100, 0, 0), Scalar(255, 20, 20));
+    return make_pair(Scalar(0, 0, 100), Scalar(20, 20, 255));
   } else {
     return make_pair(Scalar(0, 0, 0), Scalar(0, 0, 0));
   }
 }
 
-void dist_color(const Mat &image,
-                const image_geometry::PinholeCameraModel &model,
-                const pair<Scalar, Scalar> &crange) {
+boost::optional<double>
+dist_color(const Mat &image, const image_geometry::PinholeCameraModel &model,
+           const pair<Scalar, Scalar> &crange,
+           const sensor_msgs::LaserScan &scan) {
 
   const Mat ofcolor = [&image, &crange] {
     Mat dst;
@@ -125,9 +127,21 @@ void dist_color(const Mat &image,
     return points;
   }();
 
-  Scalar center = mean(color_points);
+  if (color_points.empty()) {
+    return boost::optional<double>();
+  }
 
-  ROS_INFO("%f %f %f", center[0], center[1], center[2]);
+  const Scalar center = mean(color_points);
+
+  const Point3d center_ray = model.projectPixelTo3dRay(
+      model.rectifyPoint(Point2d(center[0], center[1])));
+
+  const double angle = atan2(center_ray.x, center_ray.z) *
+                       (180.0 / boost::math::constants::pi<double>());
+  ROS_INFO("ray %f %f %f", center_ray.x, center_ray.y, center_ray.z);
+  ROS_INFO("angle %f", angle);
+
+  return 10;
 }
 
 string input_text() {
@@ -150,7 +164,7 @@ int main(int argc, char **argv) {
   Camera camera(it);
 
   Publishers publishers{n.advertise<geometry_msgs::Twist>("cmd_vel", 1000)};
-
+  ros::Duration(0.5).sleep();
   while (ros::ok()) {
     for (int i = 0; i < 100; ++i) {
       ros::spinOnce();
@@ -166,7 +180,7 @@ int main(int argc, char **argv) {
         return 0;
       }
 
-      [command, &publishers, &sensors, &camera] {
+      [command, &publishers, &sensors, &camera]() -> void {
         if (!sensors.last_scan) {
           cout << "No connection to laser scan yet\n";
           return;
@@ -199,7 +213,15 @@ int main(int argc, char **argv) {
             return stoc(s);
           }();
 
-          return dist_color(*camera.last_image, *camera.last_model, crange);
+          const auto dist = dist_color(*camera.last_image, *camera.last_model,
+                                       crange, *sensors.last_scan);
+
+          if (dist) {
+            cout << "dist is " << *dist << '\n';
+          } else {
+            cout << "no object of color found\n";
+          }
+          return;
         }
         }
       }();
