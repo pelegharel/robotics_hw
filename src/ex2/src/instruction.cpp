@@ -8,7 +8,7 @@
 #include <geometry_msgs/Twist.h>
 #include <geometry_msgs/Vector3.h>
 #include <image_geometry/pinhole_camera_model.h>
-#include <image_transport/image_transport.h>`
+#include <image_transport/image_transport.h>
 #include <iostream>
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/LaserScan.h>
@@ -49,8 +49,6 @@ private:
     last_image.emplace(cv_ptr->image);
     last_model = image_geometry::PinholeCameraModel();
     last_model->fromCameraInfo(info_msg);
-
-    ROS_INFO("CAMERA update");
   }
 
 public:
@@ -99,7 +97,33 @@ void rotate_clockwise(ros::Publisher &velocity, double alpha) {
   speed_for_time(velocity, clk_speed_msg(alpha / 4), 4);
 }
 
-void dist_color() {}
+pair<Scalar, Scalar> stoc(string color_name) {
+  if (color_name == "red") {
+    return make_pair(Scalar(0, 0, 100), Scalar(20, 20, 255));
+  } else if (color_name == "green") {
+    return make_pair(Scalar(0, 100, 0), Scalar(20, 255, 20));
+  } else if (color_name == "blue") {
+    return make_pair(Scalar(100, 0, 0), Scalar(255, 20, 20));
+  } else {
+    return make_pair(Scalar(0, 0, 0), Scalar(0, 0, 0));
+  }
+}
+
+void dist_color(const Mat &image,
+                const image_geometry::PinholeCameraModel &model,
+                const pair<Scalar, Scalar> &crange) {
+
+  const Mat ofcolor = [&image, &crange] {
+    Mat dst;
+    inRange(image, crange.first, crange.second, dst);
+    return dst;
+  }();
+
+  namedWindow("original", cv::WINDOW_NORMAL);
+  imshow("original", image);
+  imshow("of color", ofcolor);
+  waitKey(0);
+}
 
 string input_text() {
   return R"(
@@ -135,7 +159,7 @@ int main(int argc, char **argv) {
         return 0;
       }
 
-      [command, &publishers, &sensors] {
+      [command, &publishers, &sensors, &camera] {
         if (!sensors.last_scan) {
           cout << "No connection to laser scan yet\n";
           return;
@@ -157,9 +181,20 @@ int main(int argc, char **argv) {
               alpha * (boost::math::constants::pi<double>() / 180.0));
         }
         case 3: {
-          return dist_color();
+          if (!camera.last_image || !camera.last_model) {
+            cout << "no camera data recieved\n";
+            return;
+          }
+          cout << "enter a color (red, green or blue)\n";
+          auto crange = [] {
+            string s;
+            cin >> s;
+            return stoc(s);
+          }();
+
+          return dist_color(*camera.last_image, *camera.last_model, crange);
         }
-      }
+        }
       }();
 
     } catch (const invalid_argument) {
