@@ -157,12 +157,11 @@ dist_color(const Mat &image, const image_geometry::PinholeCameraModel &model,
 
 string input_text() {
   return R"(
-Plesae enter number of one of the following commands:
+Plesae enter number of one of the following commands, or q to quit:
     1. Move forward
     2. Turn around
     3. Distance to object with color X
     4. Find object with color X 
-    5. quit
 )";
 }
 
@@ -185,11 +184,12 @@ int main(int argc, char **argv) {
     std::string s;
     std::cin >> s;
     try {
-      const int command = stoi(s);
 
-      if (command == 5) {
+      if (s == "q") {
         return 0;
       }
+
+      const int command = stoi(s);
 
       [command, &publishers, &sensors, &camera]() -> void {
         if (!sensors.last_scan) {
