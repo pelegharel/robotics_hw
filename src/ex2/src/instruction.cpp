@@ -119,10 +119,15 @@ void dist_color(const Mat &image,
     return dst;
   }();
 
-  namedWindow("original", cv::WINDOW_NORMAL);
-  imshow("original", image);
-  imshow("of color", ofcolor);
-  waitKey(0);
+  const Mat color_points = [&ofcolor] {
+    Mat points;
+    findNonZero(ofcolor, points);
+    return points;
+  }();
+
+  Scalar center = mean(color_points);
+
+  ROS_INFO("%f %f %f", center[0], center[1], center[2]);
 }
 
 string input_text() {
@@ -147,7 +152,9 @@ int main(int argc, char **argv) {
   Publishers publishers{n.advertise<geometry_msgs::Twist>("cmd_vel", 1000)};
 
   while (ros::ok()) {
-    ros::spinOnce();
+    for (int i = 0; i < 100; ++i) {
+      ros::spinOnce();
+    }
     std::cout << input_text() << '\n';
 
     std::string s;
