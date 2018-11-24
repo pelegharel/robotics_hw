@@ -110,7 +110,7 @@ pair<Scalar, Scalar> stoc(string color_name) {
   }
 }
 
-boost::optional<double>
+boost::optional<pair<double, double>>
 dist_color(const Mat &image, const image_geometry::PinholeCameraModel &model,
            const pair<Scalar, Scalar> &crange,
            const sensor_msgs::LaserScan &scan) {
@@ -128,7 +128,7 @@ dist_color(const Mat &image, const image_geometry::PinholeCameraModel &model,
   }();
 
   if (color_points.empty()) {
-    return boost::optional<double>();
+    return boost::none;
   }
 
   const Scalar center = mean(color_points);
@@ -136,12 +136,23 @@ dist_color(const Mat &image, const image_geometry::PinholeCameraModel &model,
   const Point3d center_ray = model.projectPixelTo3dRay(
       model.rectifyPoint(Point2d(center[0], center[1])));
 
-  const double angle = atan2(center_ray.x, center_ray.z) *
-                       (180.0 / boost::math::constants::pi<double>());
-  ROS_INFO("ray %f %f %f", center_ray.x, center_ray.y, center_ray.z);
-  ROS_INFO("angle %f", angle);
+  const double angle = atan2(center_ray.x, center_ray.z);
 
-  return 10;
+  const double ccwise_angle = [angle] {
+    if (angle < 0) {
+      return -angle;
+    } else {
+      return boost::math::constants::pi<double>() * 2 - angle;
+    }
+  }();
+  const double dist = [ccwise_angle, &scan] {
+    const int i =
+        (int)floor((ccwise_angle - scan.angle_min) / scan.angle_increment);
+    ROS_INFO("i %d", i);
+
+    return scan.ranges[i];
+  }();
+  return make_pair(angle, dist);
 }
 
 string input_text() {
@@ -217,7 +228,7 @@ int main(int argc, char **argv) {
                                        crange, *sensors.last_scan);
 
           if (dist) {
-            cout << "dist is " << *dist << '\n';
+            cout << "dist is " << dist->second << '\n';
           } else {
             cout << "no object of color found\n";
           }
