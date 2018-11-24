@@ -84,14 +84,16 @@ void speed_for_time(ros::Publisher &velocity, const geometry_msgs::Twist &msg,
   ros::spinOnce();
 }
 
-void move_forward(const sensor_msgs::LaserScan &last_scan,
+bool move_forward(const sensor_msgs::LaserScan &last_scan,
                   ros::Publisher &velocity, double m_to_move) {
-  double min_obs_m = last_scan.range_min;
-  if (min_obs_m < m_to_move) {
-    return;
+  double min_obs_m = last_scan.ranges[0];
+  ROS_INFO("min obs %f", min_obs_m);
+  if (abs(min_obs_m - m_to_move) <= 0.1 * m_to_move) {
+    return false;
   }
 
   speed_for_time(velocity, fwd_speed_msg(m_to_move / 4), 4);
+  return true;
 }
 
 void rotate_clockwise(ros::Publisher &velocity, double alpha) {
@@ -176,7 +178,7 @@ int main(int argc, char **argv) {
   Publishers publishers{n.advertise<geometry_msgs::Twist>("cmd_vel", 1000)};
   ros::Duration(0.5).sleep();
   while (ros::ok()) {
-    for (int i = 0; i < 100; ++i) {
+    for (int i = 0; i < 2000; ++i) {
       ros::spinOnce();
     }
     std::cout << input_text() << '\n';
@@ -199,7 +201,12 @@ int main(int argc, char **argv) {
         switch (command) {
         case 1: {
           ros::spinOnce();
-          return move_forward(*sensors.last_scan, publishers.velocity, 0.05);
+          if (move_forward(*sensors.last_scan, publishers.velocity, 0.5)) {
+            cout << "moved 50 cm\n";
+          } else {
+            cout << "object less then 50 cm, can't move\n";
+          }
+          return;
         }
         case 2: {
           cout << "Enter alpha:\n";
