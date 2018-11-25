@@ -3,6 +3,7 @@
 #include "opencv2/highgui/highgui.hpp"
 #include "opencv2/imgproc/imgproc.hpp"
 #include "ros/ros.h"
+#include <algorithm>
 #include <boost/math/constants/constants.hpp>
 #include <functional>
 #include <geometry_msgs/Twist.h>
@@ -20,6 +21,8 @@
 
 using namespace std;
 using namespace cv;
+
+constexpr double pi() { return boost::math::constants::pi<double>(); }
 
 struct Publishers {
   ros::Publisher velocity;
@@ -86,7 +89,11 @@ void speed_for_time(ros::Publisher &velocity, const geometry_msgs::Twist &msg,
 
 bool move_forward(const sensor_msgs::LaserScan &last_scan,
                   ros::Publisher &velocity, double m_to_move) {
-  double min_obs_m = last_scan.ranges[0];
+
+  double min_obs_m =
+      min(*min_element(begin(last_scan.ranges), begin(last_scan.ranges) + 30),
+          *min_element(end(last_scan.ranges) - 30, end(last_scan.ranges)));
+
   ROS_INFO("min obs %f", min_obs_m);
   if (min_obs_m - m_to_move <= 0.2 * m_to_move) {
     return false;
@@ -144,7 +151,7 @@ dist_color(const Mat &image, const image_geometry::PinholeCameraModel &model,
     if (angle < 0) {
       return -angle;
     } else {
-      return boost::math::constants::pi<double>() * 2 - angle;
+      return pi() * 2 - angle;
     }
   }();
   const double dist = [ccwise_angle, &scan] {
@@ -191,9 +198,7 @@ void locate_color(const Mat &image,
     while (!dist_opt) {
       spin_all();
       if (!move_forward(scan, velocity, 0.5)) {
-        rotate_clockwise(
-            velocity,
-            rng.uniform(0.0, 2 * boost::math::constants::pi<double>()));
+        rotate_clockwise(velocity, rng.uniform(pi() / 6, pi() / 4));
       }
 
       dist_opt = dist_color(image, model, crange, scan);
@@ -204,16 +209,21 @@ void locate_color(const Mat &image,
 
     rotate_clockwise(velocity, angle);
 
+    auto last_dist = dist_color(image, model, crange, scan);
     while (move_forward(scan, velocity, 0.5)) {
       spin_all();
+      last_dist = dist_color(image, model, crange, scan);
+      if (!last_dist) {
+        break;
+      }
+      if (last_dist && last_dist->second < 0.9) {
+        ROS_INFO("located target!");
+        return;
+      }
+      rotate_clockwise(velocity, last_dist->first);
     }
-
-    const auto last_dist = dist_color(image, model, crange, scan);
-
-    if (last_dist && last_dist->second < 0.5) {
-      ROS_INFO("located target!");
-      return;
-    }
+    rotate_clockwise(velocity, rng.uniform(pi() / 6, pi() / 2));
+    move_forward(scan, velocity, 0.5);
   }
 }
 
@@ -263,9 +273,7 @@ int main(int argc, char **argv) {
             cin >> s;
             return stod(s);
           }();
-          return rotate_clockwise(
-              publishers.velocity,
-              alpha * (boost::math::constants::pi<double>() / 180.0));
+          return rotate_clockwise(publishers.velocity, alpha * (pi() / 180.0));
         }
         case 3: {
           if (!camera.last_image || !camera.last_model) {
