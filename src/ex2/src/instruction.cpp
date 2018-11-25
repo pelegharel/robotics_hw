@@ -88,7 +88,7 @@ bool move_forward(const sensor_msgs::LaserScan &last_scan,
                   ros::Publisher &velocity, double m_to_move) {
   double min_obs_m = last_scan.ranges[0];
   ROS_INFO("min obs %f", min_obs_m);
-  if (abs(min_obs_m - m_to_move) <= 0.1 * m_to_move) {
+  if (min_obs_m - m_to_move <= 0.2 * m_to_move) {
     return false;
   }
 
@@ -167,6 +167,56 @@ Plesae enter number of one of the following commands, or q to quit:
 )";
 }
 
+pair<Scalar, Scalar> color_from_user() {
+  cout << "enter a color (red, green or blue)\n";
+  string s;
+  cin >> s;
+  return stoc(s);
+}
+
+void spin_all() {
+  for (int i = 0; i < 20000; ++i) {
+    ros::spinOnce();
+  }
+}
+void locate_color(const Mat &image,
+                  const image_geometry::PinholeCameraModel &model,
+                  const pair<Scalar, Scalar> &crange,
+                  const sensor_msgs::LaserScan &scan,
+                  ros::Publisher &velocity) {
+  RNG rng;
+  while (true) {
+    auto dist_opt = dist_color(image, model, crange, scan);
+
+    while (!dist_opt) {
+      spin_all();
+      if (!move_forward(scan, velocity, 0.5)) {
+        rotate_clockwise(
+            velocity,
+            rng.uniform(0.0, 2 * boost::math::constants::pi<double>()));
+      }
+
+      dist_opt = dist_color(image, model, crange, scan);
+    }
+
+    auto angle = dist_opt->first;
+    auto dist = dist_opt->second;
+
+    rotate_clockwise(velocity, angle);
+
+    while (move_forward(scan, velocity, 0.5)) {
+      spin_all();
+    }
+
+    const auto last_dist = dist_color(image, model, crange, scan);
+
+    if (last_dist && last_dist->second < 0.5) {
+      ROS_INFO("located target!");
+      return;
+    }
+  }
+}
+
 int main(int argc, char **argv) {
   ros::init(argc, argv, "instruction");
   ros::NodeHandle n;
@@ -178,9 +228,7 @@ int main(int argc, char **argv) {
   Publishers publishers{n.advertise<geometry_msgs::Twist>("cmd_vel", 1000)};
   ros::Duration(0.5).sleep();
   while (ros::ok()) {
-    for (int i = 0; i < 2000; ++i) {
-      ros::spinOnce();
-    }
+    spin_all();
     std::cout << input_text() << '\n';
 
     std::string s;
@@ -224,13 +272,7 @@ int main(int argc, char **argv) {
             cout << "no camera data recieved\n";
             return;
           }
-          cout << "enter a color (red, green or blue)\n";
-          auto crange = [] {
-            string s;
-            cin >> s;
-            return stoc(s);
-          }();
-
+          auto crange = color_from_user();
           const auto dist = dist_color(*camera.last_image, *camera.last_model,
                                        crange, *sensors.last_scan);
 
@@ -239,6 +281,16 @@ int main(int argc, char **argv) {
           } else {
             cout << "no object of color found\n";
           }
+          return;
+        }
+        case 4: {
+          if (!camera.last_image || !camera.last_model) {
+            cout << "no camera data recieved\n";
+            return;
+          }
+          const auto crange = color_from_user();
+          locate_color(*camera.last_image, *camera.last_model, crange,
+                       *sensors.last_scan, publishers.velocity);
           return;
         }
         }
